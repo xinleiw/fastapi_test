@@ -1,0 +1,10 @@
+version: '2.3'
+services:
+  matrix:
+    image: hub.infervision.com/dev/matrix:dev
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    ports:
+      - 9100:9100
+

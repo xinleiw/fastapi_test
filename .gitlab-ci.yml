@@ -1,0 +1,63 @@
+stages:
+  - base
+  - lint
+  - test
+  - deploy
+
+variables:
+  BASE_IMAGE: hub.infervision.com/vendor/matrix:base
+
+base:
+  stage: base
+  retry: 2
+  tags:
+    - backend
+  script:
+    - docker login -u "${CI_REGISTRY_USER}" --password "${CI_REGISTRY_PASSWORD}" ${CI_REGISTRY}
+    - docker build -f docker/base.Dockerfile -t ${BASE_IMAGE} --label commit_id=${CI_COMMIT_SHORT_SHA} .
+    - docker push ${BASE_IMAGE}
+    - docker logout ${CI_REGISTRY}
+  only:
+    refs:
+      - dev
+      - master
+    changes:
+      - poetry.lock
+      - docker/base.Dockerfile
+  except:
+    - tags
+
+linters:
+  image: ${BASE_IMAGE}
+  stage: lint
+  tags:
+    - backend
+  script:
+    - flake8
+    - black . --check --diff
+    - mypy .
+
+test:
+  image: ${BASE_IMAGE}
+  stage: test
+  tags:
+    - backend
+  script:
+    - export PYTHONPATH=.
+    - pytest tests
+
+deploy:
+  stage: deploy
+  tags:
+    - backend
+  retry: 2
+  variables:
+    IMAGE: hub.infervision.com/dev/matrix:${CI_COMMIT_TAG}
+  script:
+    - docker login -u "${CI_REGISTRY_USER}" --password "${CI_REGISTRY_PASSWORD}" ${CI_REGISTRY}
+    - docker build -f docker/Dockerfile -t ${IMAGE} --label commit_id=${CI_COMMIT_SHORT_SHA} .
+    - docker push ${IMAGE}
+    - docker logout ${CI_REGISTRY}
+  only:
+    - tags
+

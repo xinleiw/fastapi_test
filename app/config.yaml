@@ -1,0 +1,3 @@
+default:
+  SQLITE_PATH: matrix_db/matrix.db
+
